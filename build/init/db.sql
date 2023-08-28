@@ -11,12 +11,13 @@ CREATE TABLE "slugs" (
 );
 
 CREATE TABLE "users_slugs" (
-  "users_id" integer,
-  "slugs_id" integer,
-  PRIMARY KEY ("users_id", "slugs_id")
+  "user_id" integer,
+  "slug_id" integer,
+  "created_at" timestamp DEFAULT (now()),
+  PRIMARY KEY ("user_id", "slug_id")
 );
 
-ALTER TABLE "users_slugs" ADD FOREIGN KEY ("users_id") REFERENCES "users" ("id");
+ALTER TABLE "users_slugs" ADD FOREIGN KEY ("user_id") REFERENCES "users" ("id");
 
-ALTER TABLE "users_slugs" ADD FOREIGN KEY ("slugs_id") REFERENCES "slugs" ("id");
+ALTER TABLE "users_slugs" ADD FOREIGN KEY ("slug_id") REFERENCES "slugs" ("id");
 
