@@ -1,3 +1,3 @@
-package server
+package handlers
 
 type users struct{}
