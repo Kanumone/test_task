@@ -1,0 +1,6 @@
+env: "local"
+http_server:
+  host: "localhost"
+  port: "8080"
+  request_timeout: 4s
+  connection_timeout: 60s
