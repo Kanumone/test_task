@@ -1,10 +1,11 @@
 package storage
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/kanumone/avito_test/internal/lib/logger"
+	"github.com/kanumone/avito_test/internal/storage/models"
 )
 
 type Storage struct {
@@ -15,13 +16,15 @@ func New(db *sqlx.DB) *Storage {
 	return &Storage{db: db}
 }
 
-func (s *Storage) CreateSlug(title string) {
+func (s *Storage) CreateSlug(slug *models.Slug) bool {
 	const op = "internal.storage.CreateSlug"
-	res, err := s.db.Exec(`insert into slugs(title) values(?)`, title)
+	slug.CreatedAt = time.Now()
+	_, err := s.db.NamedExec(`INSERT INTO slugs(title, created_at) VALUES(:title, :created_at) RETURNING id`, slug)
 	if err != nil {
 		logger.ErrorWrap(op, err.Error())
+		return false
 	}
-	fmt.Println(res)
+	return true
 }
 
 func (*Storage) DeleteSlug(title string) {
