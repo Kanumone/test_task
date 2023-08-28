@@ -8,7 +8,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
-	"github.com/kanumone/avito_test/internal/lib/logger"
 )
 
 type Config struct {
@@ -29,10 +28,9 @@ func New() *sqlx.DB {
 	var cfg Config
 	godotenv.Load()
 	cleanenv.ReadEnv(&cfg)
-	fmt.Println(cfg)
 	db, err := sqlx.Connect("pgx", url(&cfg))
 	if err != nil {
-		log.Fatal(logger.ErrorWrap(op, err.Error()))
+		log.Fatal(op, err)
 	}
 	return db
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/kanumone/avito_test/internal/lib/logger"
 )
 
 type Config struct {
@@ -27,7 +26,7 @@ func MustLoad() *Config {
 	path := os.Getenv("CONFIG_PATH")
 	err := cleanenv.ReadConfig(path, &cfg)
 	if err != nil {
-		log.Fatal(logger.ErrorWrap(op, err.Error()))
+		log.Fatal(op, err)
 	}
 	return &cfg
 }

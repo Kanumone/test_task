@@ -1,7 +1,9 @@
 package logger
 
-import "fmt"
+import (
+	"log"
+)
 
-func ErrorWrap(op, msg string) error {
-	return fmt.Errorf("%s: %s", op, msg)
+func ErrorWrap(op, msg string) {
+	log.Printf("%s: %s", op, msg)
 }
