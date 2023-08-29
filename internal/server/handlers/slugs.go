@@ -1,75 +1,60 @@
 package handlers
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/kanumone/avito_test/internal/lib/api/response"
 	"github.com/kanumone/avito_test/internal/lib/helpers"
-	"github.com/kanumone/avito_test/internal/lib/logger"
-	"github.com/kanumone/avito_test/internal/storage"
-	"github.com/kanumone/avito_test/internal/storage/models"
+	"github.com/kanumone/avito_test/internal/models"
+	"github.com/kanumone/avito_test/internal/server/dto"
 )
 
-type Slugs struct{}
+type Creator interface {
+	CreateSlug(title string) error
+}
 
-func (sl Slugs) Routes(s *storage.Storage) chi.Router {
-	r := chi.NewRouter()
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Get slugs")
-	})
-	r.Get("/users", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Slug users")
-	})
-	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-		const op = "server.handlers.slugs.Post"
-		slug := models.Slug{}
+func CreateSlug(c Creator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const op = "server.handlers.slugs.Create"
+		slug := dto.Slug{}
 		err := helpers.ParseJson(r.Body, &slug)
 		if err != nil {
-			logger.ErrorWrap(op, err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		ok := s.CreateSlug(slug)
-		if ok {
-			w.Write(response.OK(slug))
-		} else {
-			w.Write(response.Error("invalid slug"))
-		}
-	})
-	r.Put("/", func(w http.ResponseWriter, r *http.Request) {
-		const op = "server.handlers.slugs.Put"
-		data := models.UserSlug{}
-		err := helpers.ParseJson(r.Body, &data)
-		if err != nil {
-			logger.ErrorWrap(op, err.Error())
+			helpers.LogErr(op, err)
 			w.WriteHeader(http.StatusBadRequest)
-			response.Error("invalid json")
+			w.Write(response.Error("invalid json"))
 			return
 		}
-		ok := s.SlugToUser(data)
-		if ok {
-			w.Write(response.OK("updated successfully"))
+		err = c.CreateSlug(slug.Title)
+		log.Print(err)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(response.Error(err.Error()))
 		} else {
-			w.Write(response.Error("something went wrong"))
+			w.Write(response.OK("created successfully"))
 		}
-	})
-	r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+	}
+}
+
+type Deletor interface {
+	DeleteSlug(title string) error
+}
+
+func DeleteSlug(d Deletor) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "server.handlers.slugs.Delete"
 		slug := models.Slug{}
 		err := helpers.ParseJson(r.Body, &slug)
 		if err != nil {
-			logger.ErrorWrap(op, err.Error())
+			helpers.LogErr(op, err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		ok := s.DeleteSlug(slug)
-		if ok {
+		err = d.DeleteSlug(slug.Title)
+		if err != nil {
 			w.Write(response.OK("deleted successfully"))
 		} else {
-			w.Write(response.Error("invalid slug"))
+			w.Write(response.Error("something went wrong"))
 		}
-	})
-	return r
+	}
 }

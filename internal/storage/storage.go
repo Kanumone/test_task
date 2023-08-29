@@ -1,11 +1,12 @@
 package storage
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/kanumone/avito_test/internal/lib/logger"
-	"github.com/kanumone/avito_test/internal/storage/models"
+	"github.com/kanumone/avito_test/internal/lib/helpers"
+	"github.com/kanumone/avito_test/internal/server/dto"
+	"github.com/kanumone/avito_test/internal/storage/entities"
 )
 
 type Storage struct {
@@ -16,54 +17,73 @@ func New(db *sqlx.DB) *Storage {
 	return &Storage{db: db}
 }
 
-func (s *Storage) CreateSlug(slug models.Slug) bool {
+func (s *Storage) CreateSlug(title string) error {
 	const op = "internal.storage.CreateSlug"
-	slug.CreatedAt = time.Now()
-	_, err := s.db.NamedExec(`INSERT INTO slugs(title, created_at) VALUES(:title, :created_at) RETURNING id`, slug)
+	res, err := s.db.Exec(`INSERT INTO slugs(title) VALUES($1) ON CONFLICT DO NOTHING`, title)
 	if err != nil {
-		logger.ErrorWrap(op, err.Error())
-		return false
+		return helpers.Wrap(op, err)
 	}
-	return true
+	num, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if num == 0 {
+		return fmt.Errorf("DUPLICATE SLUG")
+	}
+	return nil
 }
 
-func (s *Storage) DeleteSlug(slug models.Slug) bool {
+func (s *Storage) DeleteSlug(title string) error {
 	const op = "internal.storage.DeleteSlug"
-	_, err := s.db.NamedExec(`DELETE FROM slugs WHERE title = :title`, slug)
+	slug := entities.Slug{}
+	err := s.db.Get(&slug, `DELETE FROM slugs WHERE title = $1`, title)
 	if err != nil {
-		logger.ErrorWrap(op, err.Error())
-		return false
+		return helpers.Wrap(op, err)
 	}
-	return true
+	return nil
 }
 
-func (s *Storage) SlugToUser(data models.UserSlug) bool {
+func (s *Storage) SlugToUser(data dto.UserSlug) error {
 	const op = "internal.storage.SlugToUser"
 	tx, err := s.db.Begin()
 	if err != nil {
-		logger.ErrorWrap(op, err.Error())
-		return false
+		return helpers.Wrap(op, err)
 	}
-	defer tx.Rollback()
-	for _, s := range data.Add {
-		_, err := tx.Exec(`INSERT INTO users_slugs(user_id, slug_id) VALUES($1, $2)`, data.UserID, s.ID)
+	defer func() {
 		if err != nil {
-			logger.ErrorWrap(op, err.Error())
-			return false
+			tx.Rollback()
+		}
+	}()
+	for range data.Add {
+		_, err := tx.Exec(`INSERT INTO users_slugs(user_id, slug_id) VALUES($1, $2)`, data.User.ID, 1)
+		if err != nil {
+			return helpers.Wrap(op, err)
 		}
 	}
-	for _, s := range data.Delete {
-		_, err := tx.Exec(`DELETE FROM user_slugs WHERE user_id = $1 AND slug_id = $2`, data.UserID, s.ID)
+	for range data.Delete {
+		_, err := tx.Exec(`DELETE FROM user_slugs WHERE user_id = $1 AND slug_id = $2`, data.User.ID, 1)
 		if err != nil {
-			logger.ErrorWrap(op, err.Error())
-			return false
+			return helpers.Wrap(op, err)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		logger.ErrorWrap(op, err.Error())
-		return false
+		return helpers.Wrap(op, err)
 	}
-	return true
+	return nil
+}
+
+func (s *Storage) CreateUser(userID int64) error {
+	const op = "internal.storage.CreateUser"
+	_, err := s.db.NamedExec(`INSERT INTO users(id) VALUES($1) ON CONFLICT DO NOTHING`, userID)
+	if err != nil {
+		return helpers.Wrap(op, err)
+	}
+	return nil
+}
+
+func (s *Storage) UserSlugs(userID int64) ([]entities.Slug, error) {
+	return []entities.Slug{}, nil
 }
