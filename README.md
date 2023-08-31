@@ -62,4 +62,4 @@ curl -X PATCH --location 'http://localhost:8080/user' \
 ```
 ### Потестировать можно с помощью POSTMAN
 
-[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/24967518-157b54b5-a9d3-4ee8-b413-134b63bdad6b?action=collection%2Ffork&source=rip_markdown&collection-url=entityId%3D24967518-157b54b5-a9d3-4ee8-b413-134b63bdad6b%26entityType%3Dcollection%26workspaceId%3Dae5fa9e9-4a6e-40c3-8605-5d3920c5ebc4)
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://www.postman.com/lunar-module-explorer-62645013/workspace/kanumone/overview)
