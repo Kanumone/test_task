@@ -1,6 +1,8 @@
 package dto
 
-import "github.com/kanumone/avito_test/internal/storage/entities"
+import (
+	"github.com/kanumone/avito_test/internal/storage/entities"
+)
 
 func SlugToDTO(e entities.Slug) Slug {
 	dto := Slug{
@@ -14,6 +16,14 @@ func SlugFromDTO(dto Slug) entities.Slug {
 		Title: dto.Title,
 	}
 	return e
+}
+
+func SlugSliceToDTO(slugs []entities.Slug) []Slug {
+	dto := make([]Slug, 0, len([]entities.Slug{}))
+	for _, e := range slugs {
+		dto = append(dto, SlugToDTO(e))
+	}
+	return dto
 }
 
 func UserToDTO(e entities.User) User {
