@@ -1,14 +1,16 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/kanumone/avito_test/internal/lib/api/response"
 	"github.com/kanumone/avito_test/internal/lib/helpers"
 	"github.com/kanumone/avito_test/internal/models"
-	"github.com/kanumone/avito_test/internal/server/dto"
+	"github.com/kanumone/avito_test/internal/transport/dto"
 )
+
+var validate *validator.Validate = helpers.NewValidator()
 
 type Creator interface {
 	CreateSlug(title string) error
@@ -21,15 +23,18 @@ func CreateSlug(c Creator) http.HandlerFunc {
 		err := helpers.ParseJson(r.Body, &slug)
 		if err != nil {
 			helpers.LogErr(op, err)
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(response.Error("invalid json"))
+			response.SendError(w, response.InvalidJson)
+			return
+		}
+
+		err = validate.Struct(slug)
+		if err != nil {
+			response.ValidationError(w, err.(validator.ValidationErrors))
 			return
 		}
 		err = c.CreateSlug(slug.Title)
-		log.Print(err)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(response.Error(err.Error()))
+			response.SendError(w, err)
 		} else {
 			w.Write(response.OK("created successfully"))
 		}
@@ -47,14 +52,14 @@ func DeleteSlug(d Deletor) http.HandlerFunc {
 		err := helpers.ParseJson(r.Body, &slug)
 		if err != nil {
 			helpers.LogErr(op, err)
-			w.WriteHeader(http.StatusInternalServerError)
+			response.SendError(w, response.InvalidJson)
 			return
 		}
 		err = d.DeleteSlug(slug.Title)
 		if err != nil {
-			w.Write(response.OK("deleted successfully"))
+			response.SendError(w, err)
 		} else {
-			w.Write(response.Error("something went wrong"))
+			w.Write(response.OK("deleted successfully"))
 		}
 	}
 }

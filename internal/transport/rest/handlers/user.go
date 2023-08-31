@@ -3,10 +3,11 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/kanumone/avito_test/internal/lib/api/response"
 	"github.com/kanumone/avito_test/internal/lib/helpers"
-	"github.com/kanumone/avito_test/internal/server/dto"
 	"github.com/kanumone/avito_test/internal/storage/entities"
+	"github.com/kanumone/avito_test/internal/transport/dto"
 )
 
 type Getter interface {
@@ -20,15 +21,21 @@ func UserSlugs(g Getter) http.HandlerFunc {
 		err := helpers.ParseJson(r.Body, &user)
 		if err != nil {
 			helpers.LogErr(op, err)
-			response.Error("invalid json")
-		}
-		res, err := g.UserSlugs(user.ID)
-		if err != nil {
-			helpers.LogErr(op, err)
-			w.WriteHeader(http.StatusInternalServerError)
+			response.SendError(w, response.InvalidJson)
 			return
 		}
-		w.Write(response.OK(dto.SlugSliceToDTO(res)))
+
+		err = validate.Struct(user)
+		if err != nil {
+			response.ValidationError(w, err.(validator.ValidationErrors))
+			return
+		}
+
+		if res, err := g.UserSlugs(user.ID); err != nil {
+			response.SendError(w, err)
+		} else {
+			w.Write(response.OK(dto.SlugSliceToDTO(res)))
+		}
 	}
 }
 
@@ -43,17 +50,18 @@ func UpdateUser(u Updator) http.HandlerFunc {
 		err := helpers.ParseJson(r.Body, &data)
 		if err != nil {
 			helpers.LogErr(op, err)
-			response.SendError(w, err)
+			response.SendError(w, response.InvalidJson)
 			return
 		}
-		res, err := u.SlugToUser(data)
-		if err != nil {
+
+		if res, err := u.SlugToUser(data); err != nil {
 			response.SendError(w, err)
 			return
+		} else {
+			response.Send(w, dto.UserSlugRes{
+				Added:   res.Added,
+				Deleted: res.Deleted,
+			})
 		}
-		response.Send(w, dto.UserSlugRes{
-			Added:   res.Added,
-			Deleted: res.Deleted,
-		})
 	}
 }

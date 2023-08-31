@@ -1,7 +1,7 @@
 package dto
 
 type User struct {
-	ID int64 `json:"user_id"`
+	ID int64 `json:"user_id" validate:"required"`
 }
 
 type UserSlugReq struct {
