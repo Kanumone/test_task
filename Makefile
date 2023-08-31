@@ -1,19 +1,22 @@
 .PHONY: build
-ENTRY_POINT := ./cmd/analizer/main.go
 CURRENT_DIR := $(shell pwd)
+ENTRY_POINT := $(CURRENT_DIR)/cmd/analizer/main.go
 ENV_FILE := $(CURRENT_DIR)/.env
 CONFIG_PATH := $(CURRENT_DIR)/config/config.yaml
 
 export CONFIG_PATH
 
-run: build
-	./main
+run: 
+	go run $(ENTRY_POINT)
 
 build: ./main
 	go build $(ENTRY_POINT)
 
-start_env:
+up_container:
 	cd ./build && docker-compose --env-file $(ENV_FILE) up -d
 
-stop_env:
+stop_container:
 	cd ./build && docker-compose --env-file $(ENV_FILE) stop
+
+down_container:
+	cd ./build && docker-compose --env-file $(ENV_FILE) down
