@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/kanumone/avito_test/internal/lib/api/response"
@@ -17,38 +15,45 @@ type Getter interface {
 
 func UserSlugs(g Getter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "server.handlers.slugs.Get"
-		_, err := w.Write([]byte("User slugs"))
+		const op = "server.handlers.user.UserSlugs"
+		user := dto.User{}
+		err := helpers.ParseJson(r.Body, &user)
+		if err != nil {
+			helpers.LogErr(op, err)
+			response.Error("invalid json")
+		}
+		res, err := g.UserSlugs(user.ID)
 		if err != nil {
 			helpers.LogErr(op, err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		w.Write(response.OK(dto.SlugSliceToDTO(res)))
 	}
 }
 
 type Updator interface {
-	SlugToUser(data dto.UserSlug) error
+	SlugToUser(data dto.UserSlugReq) (entities.AddedDeleted, error)
 }
 
 func UpdateUser(u Updator) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "server.handlers.slugs.Put"
-		data := dto.UserSlug{}
+		const op = "server.handlers.user.UpdateUser"
+		data := dto.UserSlugReq{}
 		err := helpers.ParseJson(r.Body, &data)
 		if err != nil {
 			helpers.LogErr(op, err)
-			w.WriteHeader(http.StatusBadRequest)
-			response.Error("invalid json")
+			response.SendError(w, err)
 			return
 		}
-		log.Printf("data: %v\n", data)
-		fmt.Fprint(w, "OK")
-		// ok := u.SlugToUser(data)
-		// if ok {
-		// 	w.Write(response.OK("updated successfully"))
-		// } else {
-		// 	w.Write(response.Error("something went wrong"))
-		// }
+		res, err := u.SlugToUser(data)
+		if err != nil {
+			response.SendError(w, err)
+			return
+		}
+		response.Send(w, dto.UserSlugRes{
+			Added:   res.Added,
+			Deleted: res.Deleted,
+		})
 	}
 }
