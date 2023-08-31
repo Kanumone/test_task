@@ -1,4 +1,4 @@
-.PHONY: build run up_container stop_container down_container env
+.PHONY: build run up_container stop_container down_container
 CURRENT_DIR := $(shell pwd)
 ENTRY_POINT := $(CURRENT_DIR)/cmd/analizer/main.go
 ENV_FILE := $(CURRENT_DIR)/.env
@@ -22,5 +22,5 @@ stop_container:
 down_container:
 	cd ./build && docker-compose --env-file $(ENV_FILE) down
 
-env: .env
+env: 
 	cp $(CURRENT_DIR)/.env.example $(CURRENT_DIR)/.env
