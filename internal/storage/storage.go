@@ -7,8 +7,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/kanumone/avito_test/internal/lib/api/response"
 	"github.com/kanumone/avito_test/internal/lib/helpers"
-	"github.com/kanumone/avito_test/internal/server/dto"
 	"github.com/kanumone/avito_test/internal/storage/entities"
+	"github.com/kanumone/avito_test/internal/transport/dto"
 )
 
 type Storage struct {
@@ -25,7 +25,7 @@ func New(db *sqlx.DB) *Storage {
 // error: an error if there was a problem creating the slug.
 func (s *Storage) CreateSlug(title string) error {
 	const op = "internal.storage.CreateSlug"
-	res, err := s.db.Exec(`INSERT INTO slugs(title) VALUES($1) ON CONFLICT DO NOTHING`, title)
+	res, err := s.db.Exec(`INSERT INTO slugs (title) VALUES ($1) ON CONFLICT (title) DO UPDATE SET deleted = false`, title)
 	if err != nil {
 		helpers.LogErr(op, err)
 		return err
@@ -55,8 +55,29 @@ func (s *Storage) DeleteSlug(title string) error {
 	return nil
 }
 
+func checkSlugs(tx *sqlx.Tx, slugs []string) (int, error) {
+	const op = "internal.storage.checkSlugs"
+	query := `SELECT title FROM slugs WHERE title = ANY($1)`
+	selected := []string{}
+	err := tx.Select(&selected, query, slugs)
+	l := len(selected)
+	if err != nil {
+		helpers.LogErr(op, err)
+		return 0, err
+	}
+	return l, nil
+}
+
 func addUserSlugs(tx *sqlx.Tx, data dto.UserSlugReq) ([]string, error) {
 	const op = "internal.storage.AddUserSlugs"
+	exists, err := checkSlugs(tx, data.Add)
+	if len(data.Add) != exists {
+		return nil, response.NotAddedSlugs
+	}
+	if err != nil {
+		helpers.LogErr(op, err)
+		return nil, err
+	}
 	query := make([]string, 0, len(data.Add))
 	addSlice := make([]interface{}, 0, len(data.Add))
 	for i, slug := range data.Add {
@@ -65,7 +86,7 @@ func addUserSlugs(tx *sqlx.Tx, data dto.UserSlugReq) ([]string, error) {
 	}
 	result := make([]string, 0, len(data.Add))
 	q := fmt.Sprintf("INSERT INTO users_slugs(user_id, slug) VALUES %s ON CONFLICT DO NOTHING RETURNING slug", strings.Join(query, ","))
-	err := tx.Select(&result, q, addSlice...)
+	err = tx.Select(&result, q, addSlice...)
 	if err != nil {
 		helpers.LogErr(op, err)
 	}
@@ -74,9 +95,17 @@ func addUserSlugs(tx *sqlx.Tx, data dto.UserSlugReq) ([]string, error) {
 
 func deleteUserSlugs(tx *sqlx.Tx, data dto.UserSlugReq) ([]string, error) {
 	const op = "internal.storage.DeleteUserSlugs"
+	exists, err := checkSlugs(tx, data.Delete)
+	if len(data.Delete) != exists {
+		return nil, response.NotDeletedSlugs
+	}
+	if err != nil {
+		helpers.LogErr(op, err)
+		return nil, err
+	}
 	result := make([]string, 0, len(data.Delete))
 	query := "DELETE FROM users_slugs WHERE user_id = $1 AND slug = ANY($2) RETURNING slug"
-	err := tx.Select(&result, query, data.ID, data.Delete)
+	err = tx.Select(&result, query, data.ID, data.Delete)
 	if err != nil {
 		helpers.LogErr(op, err)
 	}
@@ -85,6 +114,10 @@ func deleteUserSlugs(tx *sqlx.Tx, data dto.UserSlugReq) ([]string, error) {
 
 func (s *Storage) SlugToUser(data dto.UserSlugReq) (res entities.AddedDeleted, err error) {
 	const op = "internal.storage.SlugToUser"
+	err = s.CreateUser(data.User.ID)
+	if err != nil {
+		return
+	}
 	res = entities.AddedDeleted{}
 	tx, err := s.db.Beginx()
 	defer func() {
@@ -93,11 +126,6 @@ func (s *Storage) SlugToUser(data dto.UserSlugReq) (res entities.AddedDeleted, e
 			tx.Rollback()
 		}
 	}()
-	if err != nil {
-		return
-	}
-
-	err = s.CreateUser(data.User.ID)
 	if err != nil {
 		return
 	}
