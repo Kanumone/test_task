@@ -1,11 +1,11 @@
 package config
 
 import (
-	"log"
 	"os"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/kanumone/avito_test/internal/lib/helpers"
 )
 
 type Config struct {
@@ -24,9 +24,13 @@ func MustLoad() *Config {
 	const op = "config.MustLoad"
 	var cfg Config
 	path := os.Getenv("CONFIG_PATH")
+	if path == "" {
+		path = "config/config.yaml"
+	}
 	err := cleanenv.ReadConfig(path, &cfg)
 	if err != nil {
-		log.Fatal(op, err)
+		helpers.LogErr(op, err)
+		os.Exit(1)
 	}
 	return &cfg
 }
