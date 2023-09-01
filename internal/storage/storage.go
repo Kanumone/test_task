@@ -162,7 +162,11 @@ func (s *Storage) CreateUser(userID int64) error {
 func (s *Storage) UserSlugs(userID int64) ([]entities.Slug, error) {
 	const op = "internal.storage.UserSlugs"
 	slugs := []entities.Slug{}
-	err := s.db.Select(&slugs, `SELECT slug as title FROM users_slugs WHERE user_id = $1`, userID)
+	query := `SELECT slug as title FROM users_slugs
+		JOIN slugs ON users_slugs.slug = slugs.title
+		WHERE user_id = $1
+		AND deleted = false`
+	err := s.db.Select(&slugs, query, userID)
 	if err != nil {
 		helpers.LogErr(op, err)
 		return nil, err
